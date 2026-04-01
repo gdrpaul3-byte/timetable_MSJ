@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>시간표</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    background: #f0f2f5;
+    display: flex;
+    justify-content: center;
+    padding: 30px 16px;
+    min-height: 100vh;
+  }
+
+  .container {
+    max-width: 820px;
+    width: 100%;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  header h1 {
+    font-size: 28px;
+    color: #1a1a2e;
+    margin-bottom: 6px;
+  }
+
+  header .semester {
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  header .semester:hover { color: #4361ee; }
+
+  .timetable {
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  thead th {
+    padding: 14px 8px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    background: #4361ee;
+  }
+
+  thead th:first-child {
+    width: 60px;
+    background: #3a56d4;
+    border-radius: 0;
+  }
+
+  tbody td {
+    height: 72px;
+    text-align: center;
+    vertical-align: middle;
+    border: 1px solid #e8eaed;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    padding: 4px;
+    position: relative;
+  }
+
+  tbody td:first-child {
+    background: #f8f9ff;
+    font-weight: 600;
+    color: #4361ee;
+    font-size: 14px;
+    cursor: default;
+  }
+
+  tbody td:not(:first-child):hover {
+    background: #f0f3ff;
+    transform: scale(1.02);
+    z-index: 1;
+  }
+
+  .cell-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    border-radius: 8px;
+    padding: 4px;
+  }
+
+  .cell-content.has-subject {
+    margin: 3px;
+    height: calc(100% - 6px);
+  }
+
+  .subject-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1a1a2e;
+    line-height: 1.2;
+  }
+
+  .subject-detail {
+    font-size: 10px;
+    color: #666;
+    margin-top: 2px;
+    line-height: 1.2;
+  }
+
+  .empty-cell {
+    color: #ccc;
+    font-size: 20px;
+  }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px;
+    width: 340px;
+    max-width: 90vw;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.2);
+    animation: modalIn 0.2s ease;
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .modal h3 {
+    font-size: 18px;
+    color: #1a1a2e;
+    margin-bottom: 20px;
+  }
+
+  .modal label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 6px;
+  }
+
+  .modal input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid #e8eaed;
+    border-radius: 10px;
+    font-size: 14px;
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color 0.2s;
+  }
+
+  .modal input:focus { border-color: #4361ee; }
+
+  .modal-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 6px;
+  }
+
+  .modal-buttons button {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-save {
+    background: #4361ee;
+    color: #fff;
+  }
+  .btn-save:hover { background: #3a56d4; }
+
+  .btn-delete {
+    background: #fee2e2;
+    color: #ef4444;
+  }
+  .btn-delete:hover { background: #fecaca; }
+
+  .btn-cancel {
+    background: #f0f2f5;
+    color: #666;
+  }
+  .btn-cancel:hover { background: #e2e5ea; }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    margin-top: 16px;
+    color: #999;
+    font-size: 12px;
+  }
+
+  .footer button {
+    background: none;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: #888;
+    cursor: pointer;
+    margin: 0 4px;
+  }
+
+  .footer button:hover { border-color: #4361ee; color: #4361ee; }
+
+  /* Semester edit */
+  .semester-input {
+    font-size: 14px;
+    border: 2px solid #4361ee;
+    border-radius: 8px;
+    padding: 4px 10px;
+    outline: none;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>My Timetable</h1>
+    <div class="semester" id="semesterLabel" title="클릭하여 수정">2026년 1학기</div>
+  </header>
+
+  <div class="timetable">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th>월</th>
+          <th>화</th>
+          <th>수</th>
+          <th>목</th>
+          <th>금</th>
+        </tr>
+      </thead>
+      <tbody id="timetableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <button onclick="exportData()">내보내기</button>
+    <button onclick="importData()">불러오기</button>
+    <button onclick="clearAll()">초기화</button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modalTitle">수업 정보</h3>
+    <label>과목명</label>
+    <input type="text" id="inputSubject" placeholder="예: 국어">
+    <label>교실</label>
+    <input type="text" id="inputRoom" placeholder="예: 3-2반">
+    <label>교사</label>
+    <input type="text" id="inputTeacher" placeholder="예: 김선생님">
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeModal()">취소</button>
+      <button class="btn-delete" onclick="deleteCell()">삭제</button>
+      <button class="btn-save" onclick="saveCell()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS = ['월','화','수','목','금'];
+const PERIODS = 8;
+const STORAGE_KEY = 'timetable_data';
+const SEMESTER_KEY = 'timetable_semester';
+
+const COLORS = [
+  '#dbeafe','#fce7f3','#d1fae5','#fef3c7','#ede9fe',
+  '#ffedd5','#cffafe','#f1f5f9','#fecdd3','#d9f99d',
+  '#e0e7ff','#fbcfe8','#a7f3d0','#fde68a','#c4b5fd',
+];
+
+let data = {};
+let currentCell = null;
+let subjectColorMap = {};
+
+function load() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) data = JSON.parse(saved);
+  } catch(e) { data = {}; }
+
+  const sem = localStorage.getItem(SEMESTER_KEY);
+  if (sem) document.getElementById('semesterLabel').textContent = sem;
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function getColor(subject) {
+  if (!subject) return 'transparent';
+  if (!subjectColorMap[subject]) {
+    const idx = Object.keys(subjectColorMap).length % COLORS.length;
+    subjectColorMap[subject] = COLORS[idx];
+  }
+  return subjectColorMap[subject];
+}
+
+function rebuildColors() {
+  subjectColorMap = {};
+  const subjects = new Set();
+  for (const key in data) {
+    if (data[key].subject) subjects.add(data[key].subject);
+  }
+  let idx = 0;
+  for (const s of subjects) {
+    subjectColorMap[s] = COLORS[idx % COLORS.length];
+    idx++;
+  }
+}
+
+function render() {
+  rebuildColors();
+  const tbody = document.getElementById('timetableBody');
+  tbody.innerHTML = '';
+
+  for (let p = 1; p <= PERIODS; p++) {
+    const tr = document.createElement('tr');
+    const th = document.createElement('td');
+    th.textContent = p + '교시';
+    tr.appendChild(th);
+
+    for (let d = 0; d < 5; d++) {
+      const td = document.createElement('td');
+      const key = `${d}_${p}`;
+      const info = data[key];
+
+      if (info && info.subject) {
+        const div = document.createElement('div');
+        div.className = 'cell-content has-subject';
+        div.style.background = getColor(info.subject);
+
+        const name = document.createElement('div');
+        name.className = 'subject-name';
+        name.textContent = info.subject;
+        div.appendChild(name);
+
+        const details = [];
+        if (info.room) details.push(info.room);
+        if (info.teacher) details.push(info.teacher);
+        if (details.length) {
+          const detail = document.createElement('div');
+          detail.className = 'subject-detail';
+          detail.textContent = details.join(' | ');
+          div.appendChild(detail);
+        }
+        td.appendChild(div);
+      } else {
+        td.innerHTML = '<span class="empty-cell">+</span>';
+      }
+
+      td.onclick = () => openModal(d, p);
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+}
+
+function openModal(day, period) {
+  currentCell = { day, period, key: `${day}_${period}` };
+  const info = data[currentCell.key] || {};
+
+  document.getElementById('modalTitle').textContent =
+    `${DAYS[day]}요일 ${period}교시`;
+  document.getElementById('inputSubject').value = info.subject || '';
+  document.getElementById('inputRoom').value = info.room || '';
+  document.getElementById('inputTeacher').value = info.teacher || '';
+
+  document.getElementById('modal').classList.add('active');
+  setTimeout(() => document.getElementById('inputSubject').focus(), 100);
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('active');
+  currentCell = null;
+}
+
+function saveCell() {
+  if (!currentCell) return;
+  const subject = document.getElementById('inputSubject').value.trim();
+  if (!subject) {
+    delete data[currentCell.key];
+  } else {
+    data[currentCell.key] = {
+      subject,
+      room: document.getElementById('inputRoom').value.trim(),
+      teacher: document.getElementById('inputTeacher').value.trim(),
+    };
+  }
+  save();
+  render();
+  closeModal();
+}
+
+function deleteCell() {
+  if (!currentCell) return;
+  delete data[currentCell.key];
+  save();
+  render();
+  closeModal();
+}
+
+function clearAll() {
+  if (!confirm('시간표를 초기화하시겠습니까?')) return;
+  data = {};
+  save();
+  render();
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'timetable.json';
+  a.click();
+}
+
+function importData() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        data = JSON.parse(ev.target.result);
+        save();
+        render();
+      } catch(err) {
+        alert('올바른 JSON 파일이 아닙니다.');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// Semester label edit
+document.getElementById('semesterLabel').addEventListener('click', function() {
+  const current = this.textContent;
+  this.innerHTML = '';
+  const input = document.createElement('input');
+  input.className = 'semester-input';
+  input.value = current;
+  this.appendChild(input);
+  input.focus();
+  input.select();
+
+  const finish = () => {
+    const val = input.value.trim() || current;
+    this.textContent = val;
+    localStorage.setItem(SEMESTER_KEY, val);
+  };
+  input.addEventListener('blur', finish);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Escape') { input.value = current; input.blur(); }
+  });
+});
+
+// Close modal on overlay click or Escape
+document.getElementById('modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal')) closeModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeModal();
+  if (e.key === 'Enter' && document.getElementById('modal').classList.contains('active')) saveCell();
+});
+
+// Init
+load();
+render();
+</script>
+</body>
+</html>
